@@ -110,7 +110,7 @@ Question:
         try:
             reason, seats = parse_plan(response, settings)
         except (ValueError, json.JSONDecodeError, AttributeError) as e:
-            print(f"Error parsing council plan: {e}")
+            print(f"Error parsing council plan: {e}", flush=True)
     if seats is None:
         reason, seats = "Planning failed; using one seat per available model.", default_seats(settings)
 

@@ -173,7 +173,7 @@ async def _run(member: Member, prompt: str, timeout: float, effort: Optional[str
             stderr=asyncio.subprocess.PIPE,
         )
     except OSError as e:
-        print(f"Error starting {member.id}: {e}")
+        print(f"Error starting {member.id}: {e}", flush=True)
         return None
 
     try:
@@ -181,12 +181,12 @@ async def _run(member: Member, prompt: str, timeout: float, effort: Optional[str
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
-        print(f"Error querying {member.id}: timed out after {timeout:.0f}s")
+        print(f"Error querying {member.id}: timed out after {timeout:.0f}s", flush=True)
         return None
 
     text = stdout.decode(errors="replace").strip()
     if proc.returncode != 0 or not text:
-        print(f"Error querying {member.id} (exit {proc.returncode}): {stderr.decode(errors='replace')[-500:]}")
+        print(f"Error querying {member.id} (exit {proc.returncode}): {stderr.decode(errors='replace')[-500:]}", flush=True)
         return None
     return text
 

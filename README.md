@@ -24,8 +24,8 @@ This is a fork of [karpathy/llm-council](https://github.com/karpathy/llm-council
 ## Install
 
 ```bash
-git clone https://github.com/Ruxiu0409/llm-council.git
-cd llm-council
+git clone https://github.com/Ruxiu0409/llm-council-3D.git
+cd llm-council-3D
 uv sync
 (cd frontend && npm install)
 ./skill/install.sh   # symlinks skill/ to ~/.claude/skills/llm-council

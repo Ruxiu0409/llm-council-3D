@@ -1,0 +1,23 @@
+.transcript {
+  padding: 20px 22px 40px;
+}
+
+.transcript-question {
+  margin-bottom: 8px;
+}
+
+.transcript-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.transcript-question .markdown-content {
+  background: #f0f7ff;
+  border: 1px solid #d0e7ff;
+  border-radius: 8px;
+  color: #333;
+  line-height: 1.6;
+}

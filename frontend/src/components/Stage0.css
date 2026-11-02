@@ -1,0 +1,52 @@
+.stage0 .stage-description {
+  margin: 0 0 16px 0;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.planner-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.seat-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.seat-card {
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-left: 3px solid #4a90e2;
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.seat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.seat-role {
+  color: #333;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.seat-model {
+  color: #888;
+  font-size: 12px;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+.seat-brief {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.5;
+}

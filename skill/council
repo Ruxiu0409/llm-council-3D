@@ -1,0 +1,6 @@
+#!/bin/bash
+# Run the LLM Council CLI from this repo, wherever the skill is symlinked.
+set -euo pipefail
+REPO="$(cd "$(dirname "$(realpath "$0")")/.." && pwd)"
+cd "$REPO"
+exec uv run --quiet python -m backend.cli "$@"

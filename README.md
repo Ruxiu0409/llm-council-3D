@@ -1,5 +1,9 @@
 # LLM Council
 
+[![Watch the 34-second demo: a real 7-seat council on "Should we rewrite our backend in Rust?"](docs/demo-poster.jpg)](docs/demo.mp4)
+
+<sub>Every frame is real: the Claude Code session and the 3D chamber's replay of the 7-seat council it ran. (Click to play; the run itself was in Chinese.)</sub>
+
 Instead of asking one model, put the question to a council. Several AI models answer independently, review and rank each other's answers anonymously, and a chairman model writes the final verdict. A local 3D view lets you watch the seats think, speak, and vote.
 
 This is a fork of [karpathy/llm-council](https://github.com/karpathy/llm-council). The upstream app sent queries through OpenRouter with an API key. This fork instead runs the AI CLIs you're already logged in to (`claude`, `codex`, `gemini`), so **the council runs on your subscriptions, with no API key**. It ships as a Claude Code skill.

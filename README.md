@@ -1,7 +1,5 @@
 # LLM Council
 
-![llmcouncil](header.jpg)
-
 Instead of asking one model, put the question to a council. Several AI models answer independently, review and rank each other's answers anonymously, and a chairman model writes the final verdict. A local 3D view lets you watch the seats think, speak, and vote.
 
 This is a fork of [karpathy/llm-council](https://github.com/karpathy/llm-council). The upstream app sent queries through OpenRouter with an API key. This fork instead runs the AI CLIs you're already logged in to (`claude`, `codex`, `gemini`), so **the council runs on your subscriptions, with no API key**. It ships as a Claude Code skill.
@@ -33,7 +31,7 @@ uv sync
 ./skill/install.sh   # symlinks skill/ to ~/.claude/skills/llm-council
 ```
 
-`install.sh` ends by printing the council it detected.
+`install.sh` asks once for your default budget tier and whether to open the 3D view (saved to `.env`; change it anytime with `./skill/council init`), then prints the council it detected. Until a budget is chosen, councils from the skill stop and ask instead of spending quota.
 
 ## Use
 
@@ -45,6 +43,7 @@ uv sync
 ./skill/council ask "Should we rewrite the backend in Go?"
 ./skill/council ask --budget economy --no-gui "Tabs or spaces?"
 ./skill/council members      # detected models, budget tiers, defaults
+./skill/council init         # choose the default budget and GUI again
 ./skill/council open         # replay the latest council in the 3D view
 ./skill/council stop         # stop the background server
 ```
@@ -81,7 +80,7 @@ A council makes about 2 × seats + 2 calls, all billed to your subscriptions. Bi
 Defaults can be set in a `.env` file in the repo root:
 
 ```bash
-LLM_COUNCIL_BUDGET=standard     # default tier: economy | standard | max
+LLM_COUNCIL_BUDGET=economy      # default tier: economy | standard | max (`council init` sets it)
 LLM_COUNCIL_GUI=1               # open the 3D view by default (0 to turn off)
 LLM_COUNCIL_MODELS="claude/opus,claude/sonnet,codex/default"   # override the auto-detected pool
 LLM_COUNCIL_CHAIRMAN=claude/opus
@@ -107,6 +106,8 @@ cd frontend && npm run dev      # Vite dev server on http://localhost:5173 (talk
 - **Frontend:** React + Vite, three.js through react-three-fiber/drei, react-markdown
 - **Storage:** JSON files in `data/conversations/`
 
-## Credits
+## Credits and license
 
-The original idea and the anonymized peer-review design come from [Andrej Karpathy's llm-council](https://github.com/karpathy/llm-council).
+The original idea, the three-stage flow, and the anonymized peer-review design come from [Andrej Karpathy's llm-council](https://github.com/karpathy/llm-council). Parts of `backend/council.py`, `backend/storage.py`, `backend/main.py`, and the frontend's `Stage1`–`Stage3`, `Sidebar`, and `App` still build on that code.
+
+The upstream project was published without a license, so its parts remain under the original author's rights. Everything this fork adds (the CLI providers and budget tiers, background runs, the Claude Code skill, the 3D chamber, and the other changes) is released under the MIT License; see [`LICENSE`](LICENSE).

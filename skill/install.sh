@@ -11,4 +11,8 @@ fi
 mkdir -p "$(dirname "$TARGET")"
 ln -sfn "$SKILL_DIR" "$TARGET"
 echo "Installed: $TARGET -> $SKILL_DIR"
+# Pick the default budget and GUI once, so the skill never has to look them up.
+if [ -t 0 ]; then
+  "$SKILL_DIR/council" init
+fi
 "$SKILL_DIR/council" members

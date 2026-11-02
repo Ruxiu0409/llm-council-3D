@@ -9,7 +9,7 @@ Each run may override the pool, chairman, and seat count (see `settings_for`),
 so users can trade quota for firepower per question. Defaults come from the
 environment (or a `.env` file):
 
-    LLM_COUNCIL_BUDGET=max                 # economy | standard | max (default: standard)
+    LLM_COUNCIL_BUDGET=max                 # economy | standard | max (default: economy; `council init` sets it)
     LLM_COUNCIL_GUI=0                      # don't open the 3D view by default (default: 1)
     LLM_COUNCIL_MODELS="claude/opus,claude/sonnet,codex/default,gemini/default"
     LLM_COUNCIL_CHAIRMAN="claude/opus"
@@ -32,7 +32,8 @@ from .providers import EFFORT_LEVELS, Member, available_clis, codex_default_mode
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-load_dotenv(PROJECT_ROOT / ".env")
+ENV_FILE = PROJECT_ROOT / ".env"
+load_dotenv(ENV_FILE)
 
 
 # Models offered in the UI per CLI: (model, label, cost hint). Cost is relative quota use.
@@ -205,9 +206,12 @@ def _budgets() -> Dict[str, Dict[str, Any]]:
 
 
 BUDGETS = _budgets()
-DEFAULT_BUDGET = os.getenv("LLM_COUNCIL_BUDGET", "standard")
+# The cheapest tier unless the user picked one (`council init` writes it to .env),
+# so a fresh install never burns quota the user didn't choose to spend.
+BUDGET_CONFIGURED = "LLM_COUNCIL_BUDGET" in os.environ
+DEFAULT_BUDGET = os.getenv("LLM_COUNCIL_BUDGET", "economy")
 if DEFAULT_BUDGET not in BUDGETS:
-    DEFAULT_BUDGET = "standard"
+    DEFAULT_BUDGET = "economy"
 
 
 def settings_for(

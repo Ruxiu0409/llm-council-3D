@@ -8,6 +8,7 @@
     python -m backend.cli result <conversation_id>
     python -m backend.cli open [conversation_id]   # latest if omitted
     python -m backend.cli members
+    python -m backend.cli init [--budget economy|standard|max] [--gui | --no-gui]
     python -m backend.cli stop
 
 `ask` starts the server if needed, opens the live 3D view in the browser
@@ -15,6 +16,10 @@
 prints the verdict as markdown. Without the GUI the frontend isn't built and no
 browser opens; the run still lives in the background server, so `result` can
 reattach and `open` can replay it later.
+
+`init` saves the default budget and GUI choice to .env. Until it has run (or
+LLM_COUNCIL_BUDGET is set), `ask` without --budget stops and says so, so the
+first council never spends quota the user didn't choose.
 """
 
 import argparse
@@ -29,7 +34,7 @@ from pathlib import Path
 
 import httpx
 
-from .config import BUDGETS, DEFAULT_BUDGET, FRONTEND_DIST, HOST, MODEL_CATALOG, OPEN_GUI, PORT, PROJECT_ROOT, SEAT_LIMIT, MIN_SEATS, settings_for
+from .config import BUDGET_CONFIGURED, BUDGETS, DEFAULT_BUDGET, ENV_FILE, FRONTEND_DIST, HOST, MODEL_CATALOG, OPEN_GUI, PORT, PROJECT_ROOT, SEAT_LIMIT, MIN_SEATS, settings_for
 from .providers import EFFORT_LEVELS
 
 BASE_URL = f"http://{HOST}:{PORT}"
@@ -183,7 +188,78 @@ def print_verdict(result: dict, conversation_id: str, gui: bool = True):
     print(stage3.get("response", "(no synthesis)"))
 
 
+NOT_CONFIGURED = 3  # exit code: `ask` ran before `init`
+
+
+def tier_line(key: str) -> str:
+    tier = BUDGETS[key]
+    seats = f"{tier['seats']} seats" if tier["seats"] else f"auto, up to {tier['max_seats']} seats"
+    return f"{key}: {', '.join(tier['models'])} · chair {tier['chairman']} · {seats} · effort {tier['effort'] or 'CLI default'}"
+
+
+def write_env(updates: dict):
+    """Set keys in .env, keeping every other line (and comment) as it was."""
+    lines = ENV_FILE.read_text().splitlines() if ENV_FILE.exists() else []
+    done = set()
+    for i, line in enumerate(lines):
+        key = line.split("=", 1)[0].strip()
+        if key in updates and not line.lstrip().startswith("#"):
+            lines[i] = f"{key}={updates[key]}"
+            done.add(key)
+    lines += [f"{key}={value}" for key, value in updates.items() if key not in done]
+    ENV_FILE.write_text("\n".join(lines) + "\n")
+
+
+def prompt_choice(question: str, choices: list, default: str) -> str:
+    while True:
+        answer = input(f"{question} [{'/'.join(choices)}] (default {default}): ").strip().lower()
+        if not answer:
+            return default
+        if answer in choices:
+            return answer
+        print(f"Please answer one of: {', '.join(choices)}", file=sys.stderr)
+
+
+def init(budget, gui) -> tuple:
+    """Fill in whatever wasn't given (asking on a terminal), save it to .env, and return it."""
+    if budget is None or gui is None:
+        if not sys.stdin.isatty():
+            sys.exit("Pass the choices as flags: council init --budget economy|standard|max --gui|--no-gui")
+        if not BUDGETS:
+            sys.exit("No AI CLI found (claude, codex, gemini). Install and log in to one first.")
+    if budget is None:
+        print("Budget tiers (each council makes about 2 × seats + 2 calls on your subscriptions):", file=sys.stderr)
+        for key in BUDGETS:
+            print(f"  {tier_line(key)}", file=sys.stderr)
+        budget = prompt_choice("Default budget", list(BUDGETS), DEFAULT_BUDGET)
+    if gui is None:
+        gui = prompt_choice("Open the live 3D view in the browser for each council?", ["y", "n"],
+                            "y" if OPEN_GUI else "n") == "y"
+    write_env({"LLM_COUNCIL_BUDGET": budget, "LLM_COUNCIL_GUI": "1" if gui else "0"})
+    log(f"Saved to {ENV_FILE}: budget {budget}, GUI {'on' if gui else 'off'}.")
+    if server_is_up():
+        log("Restart the server (`council stop`) for the web UI to pick up the new default.")
+    return budget, gui
+
+
+def cmd_init(args):
+    init(args.budget, args.gui)
+
+
 def cmd_ask(args):
+    gui = OPEN_GUI if args.gui is None else args.gui
+    if not BUDGET_CONFIGURED and args.budget is None:
+        if not (args.question and sys.stdin.isatty()):
+            log("LLM Council isn't set up yet: no default budget has been chosen.")
+            log("Ask the user which budget (economy / standard / max) and whether to open the 3D view, then run:")
+            log("  council init --budget <tier> --gui|--no-gui")
+            log("Or pass --budget to this run only. Tiers:")
+            for key in BUDGETS:
+                log(f"  {tier_line(key)}")
+            sys.exit(NOT_CONFIGURED)
+        args.budget, chosen_gui = init(None, args.gui)
+        gui = chosen_gui if args.gui is None else args.gui
+
     question = " ".join(args.question).strip() if args.question else sys.stdin.read().strip()
     if not question:
         sys.exit("No question given (pass it as an argument or on stdin).")
@@ -195,7 +271,6 @@ def cmd_ask(args):
     except ValueError as e:
         sys.exit(f"Invalid council settings: {e}")
 
-    gui = OPEN_GUI if args.gui is None else args.gui
     ensure_server(gui)
     conversation = httpx.post(f"{BASE_URL}/api/conversations", json={}, timeout=10).json()
     conversation_id = conversation["id"]
@@ -213,7 +288,7 @@ def cmd_ask(args):
         sys.exit(f"Invalid council settings: {response.json()['detail']}")
     response.raise_for_status()
 
-    log(f"Conversation {conversation_id}")
+    log(f"Conversation {conversation_id} · budget {args.budget or DEFAULT_BUDGET} · GUI {'on' if gui else 'off'}")
     if gui:
         url = f"{BASE_URL}/?c={conversation_id}"
         log(f"Live view: {url}")
@@ -244,10 +319,11 @@ def cmd_open(args):
 
 def cmd_members(args):
     print("Budget tiers (--budget):")
-    for key, tier in BUDGETS.items():
+    for key in BUDGETS:
         mark = "  (default)" if key == DEFAULT_BUDGET else ""
-        seats = f"{tier['seats']} seats" if tier["seats"] else f"auto, up to {tier['max_seats']} seats"
-        print(f"  {key}: {', '.join(tier['models'])} · chair {tier['chairman']} · {seats} · effort {tier['effort'] or 'CLI default'}{mark}")
+        print(f"  {tier_line(key)}{mark}")
+    if not BUDGET_CONFIGURED:
+        print("  No default chosen yet; run `council init`.")
     print("\nSelectable models (--models / --chairman):")
     for model in MODEL_CATALOG:
         cost = f"  [{model['cost']}]" if model["cost"] else ""
@@ -269,11 +345,34 @@ def cmd_stop(args):
     PID_FILE.unlink()
 
 
+ASK_EPILOG = """\
+Tiers set models, chairman, seats, and effort in one go; explicit flags override them.
+Run `council members` for the exact models in each tier on this machine.
+  economy   lightest models, 2 seats, low effort
+  standard  workhorse models, planner picks up to 6 seats, CLI default effort
+  max       strongest models (+ Gemini), planner picks up to 20 seats, max effort
+A council makes about 2 × seats + 2 calls. Deeper effort is slower: a 20-seat max
+council can take 10+ minutes; if `ask` times out, `council result <id>` reattaches.
+
+What the user says -> flags:
+  "use the best" / 頂配 / 火力全開         --budget max
+  "low on quota" / 省一點                  --budget economy
+  "three Fable seats"                      --models claude/fable --seats 3 --chairman claude/fable
+  "only Claude and GPT"                    --models claude/<m>,codex/<m>  (ids from `council members`)
+  "4 seats" / "at most 4 seats"            --seats 4 / --max-seats 4
+  "think harder" / "just be quick"         --effort max / --effort low
+  "no window" / 不要 GUI                   --no-gui
+  "let me watch" / 開畫面                  --gui
+Never pick a cheaper tier or model unless the user asks for it.
+"""
+
+
 def main():
     parser = argparse.ArgumentParser(prog="council", description="Run the LLM Council")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    ask = sub.add_parser("ask", help="Ask the council a question")
+    ask = sub.add_parser("ask", help="Ask the council a question", epilog=ASK_EPILOG,
+                         formatter_class=argparse.RawDescriptionHelpFormatter)
     ask.add_argument("question", nargs="*", help="The question (read from stdin if omitted)")
     gui = ask.add_mutually_exclusive_group()
     gui.add_argument("--gui", dest="gui", action="store_true", default=None,
@@ -298,6 +397,13 @@ def main():
     open_.set_defaults(func=cmd_open)
 
     sub.add_parser("members", help="Show the detected council").set_defaults(func=cmd_members)
+
+    init_ = sub.add_parser("init", help="Choose the default budget and GUI (saved to .env); asks for what's missing")
+    init_.add_argument("--budget", choices=list(BUDGETS))
+    init_gui = init_.add_mutually_exclusive_group()
+    init_gui.add_argument("--gui", dest="gui", action="store_true", default=None)
+    init_gui.add_argument("--no-gui", dest="gui", action="store_false")
+    init_.set_defaults(func=cmd_init)
     sub.add_parser("stop", help="Stop the background server").set_defaults(func=cmd_stop)
 
     args = parser.parse_args()

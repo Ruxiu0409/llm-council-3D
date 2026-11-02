@@ -14,7 +14,7 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 - `DEFAULT_SETTINGS` (pool, chairman, planner) and `TITLE_MODEL`: auto-detected from installed CLIs, overridable via `LLM_COUNCIL_MODELS` / `LLM_COUNCIL_CHAIRMAN` / `LLM_COUNCIL_PLANNER` in `.env`
 - `MODEL_CATALOG`: everything selectable, with a relative cost hint. Claude: fable/opus/sonnet/haiku. Codex: every visible model in `~/.codex/models_cache.json` (Codex's own server-fetched list; hints derived from its descriptions, e.g. "frontier", "fast"), falling back to the config.toml model if the cache is missing. Gemini: default
 - Codex picks per tier come from that cache (`_codex_pick`): `max` → frontier, `standard` → latest workhorse, `economy` → fast. The ids depend on the user's Codex account, so never hardcode them. Codex effort is clamped to what each model supports; `ultra` (auto task delegation) is never used
-- `BUDGETS`: tiers `economy` / `standard` / `max` (models, chairman, seats, effort), built from what's installed. `DEFAULT_BUDGET` comes from `LLM_COUNCIL_BUDGET` (default `standard`)
+- `BUDGETS`: tiers `economy` / `standard` / `max` (models, chairman, seats, effort), built from what's installed. `DEFAULT_BUDGET` comes from `LLM_COUNCIL_BUDGET` (default `economy`, so a fresh install spends little; `BUDGET_CONFIGURED` says whether the user chose one)
 - `CouncilSettings` (pool, chairman, planner, min/max seats, effort) is per run: `settings_for()` starts from the request's `budget` (or the default tier) and applies explicit `models` / `chairman` / `seats` / `max_seats` / `effort` on top, then validates (seats 2–20; a chosen chairman also plans)
 - `providers.MAX_CONCURRENT` (`LLM_COUNCIL_CONCURRENCY`, default 10) caps CLI calls running at once; larger councils queue
 - Effort is passed to every call: Claude `--effort <level>`, Codex `-c model_reasoning_effort=...`. Timeouts grow with effort (`providers._TIMEOUTS`)
@@ -36,6 +36,8 @@ LLM Council is a 3-stage deliberation system where multiple LLMs collaboratively
 
 **`cli.py`** (used by the skill)
 - `ask`: starts the server detached, starts a run, and prints the verdict. With the GUI (default; `LLM_COUNCIL_GUI=0` or `--no-gui` turns it off) it also rebuilds a stale frontend and opens `/?c=<id>`. Without it, nothing is built or opened, but the run still lives in the server so it survives the CLI being killed
+- `init` saves the default budget and GUI to `.env` (asks on a terminal, flags otherwise; `install.sh` runs it). Until then `ask` without `--budget` exits with code 3 so the skill asks the user once instead of spending quota
+- `ask --help` holds the tier and phrase-to-flag tables; `SKILL.md` stays short and points there, since the skill's text costs the host model tokens on every use
 - `result <id>` (reattach or read stored), `open [id]` (3D view, latest by default), `members`, `stop`
 
 **`council.py`** - The Core Logic

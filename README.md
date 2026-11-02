@@ -1,4 +1,4 @@
-# LLM Council
+# LLM Council 3D
 
 https://github.com/user-attachments/assets/2d7611c4-07a4-4ea2-8040-e9fbaff000bd
 

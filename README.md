@@ -1,8 +1,8 @@
 # LLM Council
 
-[![Watch the 34-second demo: a real 7-seat council on "Should we rewrite our backend in Rust?"](docs/demo-poster.jpg)](docs/demo.mp4)
+https://github.com/user-attachments/assets/2d7611c4-07a4-4ea2-8040-e9fbaff000bd
 
-<sub>Every frame is real: the Claude Code session and the 3D chamber's replay of the 7-seat council it ran. (Click to play; the run itself was in Chinese.)</sub>
+<sub>Every frame is real: the Claude Code session and the 3D chamber's replay of the 7-seat council it ran (the run itself was in Chinese).</sub>
 
 Instead of asking one model, put the question to a council. Several AI models answer independently, review and rank each other's answers anonymously, and a chairman model writes the final verdict. A local 3D view lets you watch the seats think, speak, and vote.
 
